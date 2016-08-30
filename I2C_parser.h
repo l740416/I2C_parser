@@ -30,6 +30,8 @@ class I2CParser
     byte set_pars( String pars );
     byte set_calc( String calc );
     
+    uint8_t get_address() { return address; }
+    
     void _init();
     void _exec();
      

@@ -2,6 +2,7 @@
 
 #include "I2C_parser.h"
 
+
 I2CParser DS3231;
 
 void setup() {
