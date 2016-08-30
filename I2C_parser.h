@@ -13,11 +13,19 @@ I2CParser.h - Arduino library for string defined I2C communications
 #include "Wire.h"
 
 #define DELAY_UNIT       1000  // ms
+#define CMD_PER_SET      4
 
 #define MAX_CMD_LENGTH   16
 #define MAX_READ_LENGTH  32
 #define MAX_PARS_LENGTH  16
 #define MAX_CALC_LENGTH  32
+
+/* 
+  the maximum number of different reading from a sensor
+  this also refer to number of different pars/calc rules for a sensor  
+*/
+#define MAX_DATA_NUM     2
+
 
 class I2CParser
 {
@@ -27,16 +35,16 @@ class I2CParser
     void set_addr( uint8_t addr ) { address = addr; }
     byte set_init( String init );
     byte set_exec( String exec );
-    byte set_pars( String pars );
-    byte set_calc( String calc );
+    byte set_pars( String pars, byte idx = 0 );
+    byte set_calc( String calc, byte idx = 0 );
     
     uint8_t get_address() { return address; }
     
     void _init();
     void _exec();
      
-    long get_data()  { return data; }
-    float get_value() { return value; }
+    long get_data( byte idx = 0 )  { return data[idx]; }
+    float get_value( byte idx = 0 ) { return value[idx]; }
      
     enum error_type {
       NO_ERROR,
@@ -47,8 +55,8 @@ class I2CParser
     
     void show_init() { show_cmds( init_cmds, init_cmds_n ); }
     void show_exec() { show_cmds( exec_cmds, exec_cmds_n ); }
-    void show_pars();
-    void show_calc();
+    void show_pars( byte idx = 0 );
+    void show_calc( byte idx = 0 );
     
     
   private:
@@ -90,21 +98,45 @@ class I2CParser
     float do_div( float v1, float v2 ) { return v1 / v2; }
     float do_lsh( float v1, float v2 ) { return ( float ) ( ( (int) v1 ) << ( (int) v2 ) ); }
     float do_rsh( float v1, float v2 ) { return ( float ) ( ( (int) v1 ) >> ( (int) v2 ) ); }
-        
+    
+    /*
+      static struct pool, beta
+    */
+    struct comm_set {
+      byte assigned;
+      comm cmds[ CMD_PER_SET ];
+      comm_set *next;
+    };
+    static comm_set comm_pool[ 20 ];
+
+    struct pars_set {
+      byte assigned;
+      pars cmds[ CMD_PER_SET ];
+      pars_set *next;
+    };
+    static pars_set pars_pool[ 20 ];
+    
+    struct calc_set {
+      byte assigned;
+      calc cmds[ CMD_PER_SET ];
+      calc_set *next;
+    };
+    static calc_set calc_pool[ 20 ];
+            
     byte init_cmds_n;
     byte exec_cmds_n;
-    byte pars_cmds_n;
-    byte calc_cmds_n;   
+    byte pars_cmds_n[ MAX_DATA_NUM ];
+    byte calc_cmds_n[ MAX_DATA_NUM ];   
     struct comm init_cmds[ MAX_CMD_LENGTH ];
     struct comm exec_cmds[ MAX_CMD_LENGTH ]; 
-    struct pars pars_cmds[ MAX_PARS_LENGTH ];
-    struct calc calc_cmds[ MAX_CALC_LENGTH ];
+    struct pars pars_cmds[ MAX_DATA_NUM ][ MAX_PARS_LENGTH ];
+    struct calc calc_cmds[ MAX_DATA_NUM ][ MAX_CALC_LENGTH ];
     
     byte raw_data_n;
     byte raw_data[ MAX_READ_LENGTH ];
     
-    float data;
-    float value;
+    float data[ MAX_DATA_NUM ];
+    float value[ MAX_DATA_NUM ];
     
     byte get_bits( int idx1, byte idx2 ) { 
       if( idx2 > 7 ) return raw_data[ idx1 ];

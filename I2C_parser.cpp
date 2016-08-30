@@ -10,16 +10,20 @@ I2CParser.h - Arduino library for string defined I2C communications
 I2CParser::I2CParser() {
   init_cmds_n = 0;
   exec_cmds_n = 0;
-  pars_cmds_n = 0;
-  calc_cmds_n = 0;   
+  for( int i = 0; i < MAX_DATA_NUM; i++ ) {
+    pars_cmds_n[i] = 0;
+    calc_cmds_n[i] = 0;   
+  }
   raw_data_n  = 0;
 }
 
 I2CParser::I2CParser( uint8_t address, String init, String exec, String pars, String calc ) {
   init_cmds_n = 0;
   exec_cmds_n = 0;
-  pars_cmds_n = 0;
-  calc_cmds_n = 0;   
+  for( int i = 0; i < MAX_DATA_NUM; i++ ) {
+    pars_cmds_n[i] = 0;
+    calc_cmds_n[i] = 0;   
+  }
   raw_data_n  = 0;
   set_addr( address );
   set_init( init );
@@ -111,10 +115,10 @@ byte I2CParser::set_exec( String exec ) {
   return pasre_cmds( exec, exec_cmds, exec_cmds_n );
 }
 
-byte I2CParser::set_pars( String pars ) {
+byte I2CParser::set_pars( String pars, byte idx ) {
   
   pars += ",";
-  pars_cmds_n = 0;
+  pars_cmds_n[ idx ] = 0;
   int v1 = 0;
   int v2 = 8;
   
@@ -131,15 +135,15 @@ byte I2CParser::set_pars( String pars ) {
       
     if( v1 >= MAX_READ_LENGTH ) return EXCEED_MAX_LENGTH;
 
-    pars_cmds[ pars_cmds_n ].byte_idx = v1;
-    pars_cmds[ pars_cmds_n ].bit_idx  = v2;
-    pars_cmds_n += 1;
-    if( pars_cmds_n >= MAX_PARS_LENGTH ) return EXCEED_MAX_LENGTH;
+    pars_cmds[ idx ][ pars_cmds_n[ idx ] ].byte_idx = v1;
+    pars_cmds[ idx ][ pars_cmds_n[ idx ] ].bit_idx  = v2;
+    pars_cmds_n[ idx ] += 1;
+    if( pars_cmds_n[ idx ] >= MAX_PARS_LENGTH ) return EXCEED_MAX_LENGTH;
   }
   return NO_ERROR;
 }
 
-byte I2CParser::set_calc( String calc ) {
+byte I2CParser::set_calc( String calc, byte idx ) {
   
   /*
     $ is the raw data generated after pars phase and all values shoud be non-negative number.
@@ -151,7 +155,7 @@ byte I2CParser::set_calc( String calc ) {
   if( calc == "" ) calc ="$";
     
   calc += ",";
-  calc_cmds_n = 0;
+  calc_cmds_n[ idx ] = 0;
   int v = 0;
   
   for( int i = 0; i < calc.length(); i++ ) {
@@ -159,58 +163,58 @@ byte I2CParser::set_calc( String calc ) {
     switch( calc[i++] ) {
       
       case '$':
-        calc_cmds[ calc_cmds_n ].func       = NULL;
-        calc_cmds[ calc_cmds_n ].value      = &data;
-        calc_cmds[ calc_cmds_n ].phy_value  = v;
+        calc_cmds[ idx ][ calc_cmds_n[ idx ] ].func       = NULL;
+        calc_cmds[ idx ][ calc_cmds_n[ idx ] ].value      = &(data[ idx ]);
+        calc_cmds[ idx ][ calc_cmds_n[ idx ] ].phy_value  = v;
         break;
         
       case '+': 
-        calc_cmds[ calc_cmds_n ].func       = &I2CParser::do_add;
-        calc_cmds[ calc_cmds_n ].value      = &( calc_cmds[ calc_cmds_n ].phy_value );
-        calc_cmds[ calc_cmds_n ].phy_value  = v;
+        calc_cmds[ idx ][ calc_cmds_n[ idx ] ].func       = &I2CParser::do_add;
+        calc_cmds[ idx ][ calc_cmds_n[ idx ] ].value      = &( calc_cmds[ idx ][ calc_cmds_n[ idx ] ].phy_value );
+        calc_cmds[ idx ][ calc_cmds_n[ idx ] ].phy_value  = v;
         break;
         
       case '-': 
-        calc_cmds[ calc_cmds_n ].func       = &I2CParser::do_sub;
-        calc_cmds[ calc_cmds_n ].value      = &( calc_cmds[ calc_cmds_n ].phy_value );
-        calc_cmds[ calc_cmds_n ].phy_value  = v;
+        calc_cmds[ idx ][ calc_cmds_n[ idx ] ].func       = &I2CParser::do_sub;
+        calc_cmds[ idx ][ calc_cmds_n[ idx ] ].value      = &( calc_cmds[ idx ][ calc_cmds_n[ idx ] ].phy_value );
+        calc_cmds[ idx ][ calc_cmds_n[ idx ] ].phy_value  = v;
         break;
         
       case '*': 
-        calc_cmds[ calc_cmds_n ].func       = &I2CParser::do_mul;
-        calc_cmds[ calc_cmds_n ].value      = &( calc_cmds[ calc_cmds_n ].phy_value );
-        calc_cmds[ calc_cmds_n ].phy_value  = v;
+        calc_cmds[ idx ][ calc_cmds_n[ idx ] ].func       = &I2CParser::do_mul;
+        calc_cmds[ idx ][ calc_cmds_n[ idx ] ].value      = &( calc_cmds[ idx ][ calc_cmds_n[ idx ] ].phy_value );
+        calc_cmds[ idx ][ calc_cmds_n[ idx ] ].phy_value  = v;
         break;
         
       case '/': 
-        calc_cmds[ calc_cmds_n ].func       = &I2CParser::do_div;
-        calc_cmds[ calc_cmds_n ].value      = &( calc_cmds[ calc_cmds_n ].phy_value );
-        calc_cmds[ calc_cmds_n ].phy_value  = v;
+        calc_cmds[ idx ][ calc_cmds_n[ idx ] ].func       = &I2CParser::do_div;
+        calc_cmds[ idx ][ calc_cmds_n[ idx ] ].value      = &( calc_cmds[ idx ][ calc_cmds_n[ idx ] ].phy_value );
+        calc_cmds[ idx ][ calc_cmds_n[ idx ] ].phy_value  = v;
         break;
         
       case '>': 
-        calc_cmds[ calc_cmds_n ].func       = &I2CParser::do_rsh;
-        calc_cmds[ calc_cmds_n ].value      = &( calc_cmds[ calc_cmds_n ].phy_value );
-        calc_cmds[ calc_cmds_n ].phy_value  = v;
+        calc_cmds[ idx ][ calc_cmds_n[ idx ] ].func       = &I2CParser::do_rsh;
+        calc_cmds[ idx ][ calc_cmds_n[ idx ] ].value      = &( calc_cmds[ idx ][ calc_cmds_n[ idx ] ].phy_value );
+        calc_cmds[ idx ][ calc_cmds_n[ idx ] ].phy_value  = v;
         break;
         
       case '<': 
-        calc_cmds[ calc_cmds_n ].func       = &I2CParser::do_lsh;
-        calc_cmds[ calc_cmds_n ].value      = &( calc_cmds[ calc_cmds_n ].phy_value );
-        calc_cmds[ calc_cmds_n ].phy_value  = v;
+        calc_cmds[ idx ][ calc_cmds_n[ idx ] ].func       = &I2CParser::do_lsh;
+        calc_cmds[ idx ][ calc_cmds_n[ idx ] ].value      = &( calc_cmds[ idx ][ calc_cmds_n[ idx ] ].phy_value );
+        calc_cmds[ idx ][ calc_cmds_n[ idx ] ].phy_value  = v;
         break;
      
       default:
         i -= 1;
         v = get_next_num( calc, i );
-        calc_cmds[ calc_cmds_n ].func       = NULL;
-        calc_cmds[ calc_cmds_n ].value      = &( calc_cmds[ calc_cmds_n ].phy_value );
-        calc_cmds[ calc_cmds_n ].phy_value  = v;
+        calc_cmds[ idx ][ calc_cmds_n[ idx ] ].func       = NULL;
+        calc_cmds[ idx ][ calc_cmds_n[ idx ] ].value      = &( calc_cmds[ idx ][ calc_cmds_n[ idx ] ].phy_value );
+        calc_cmds[ idx ][ calc_cmds_n[ idx ] ].phy_value  = v;
     }
 
     if( calc[i] != ',' ) return SYNTAX_ERROR;   
-    calc_cmds_n += 1;
-    if( calc_cmds_n >= MAX_CALC_LENGTH ) return EXCEED_MAX_LENGTH;
+    calc_cmds_n[ idx ] += 1;
+    if( calc_cmds_n[ idx ] >= MAX_CALC_LENGTH ) return EXCEED_MAX_LENGTH;
   }
   
   /* 
@@ -218,8 +222,8 @@ byte I2CParser::set_calc( String calc ) {
   */
   
   int checker = 0;
-  for( int i = 0; i < calc_cmds_n; i++ ) {  
-    if( calc_cmds[i].func == NULL ) checker += 1;
+  for( int i = 0; i < calc_cmds_n[ idx ]; i++ ) {  
+    if( calc_cmds[ idx ][i].func == NULL ) checker += 1;
     else checker -= 1;
   }
   if( checker != 1 ) return SYNTAX_ERROR;    
@@ -240,29 +244,32 @@ void I2CParser::_exec() {
     (this->*exec_cmds[i].func)( exec_cmds[i].input );
   }
   
-  long val = 0;
-  for( int i = 0; i < pars_cmds_n; i++ ) {      
-    byte v = get_bits( pars_cmds[i].byte_idx, pars_cmds[i].bit_idx );
-    if( pars_cmds[i].bit_idx > 7 ) val = ( val << 8 ) | v;
-    else val = ( val << 1 ) | v;
-  }
-  data = ( float ) val;
-  
-  float stack_v[ MAX_CALC_LENGTH ];
-  int stack_ptr = 0;
-  
-  for( int i = 0; i < calc_cmds_n; i++ ) {  
-    
-    if( calc_cmds[i].func == NULL ) {
-      stack_v[ stack_ptr++ ] = *(calc_cmds[i].value);
-
-    } else {
-      float val2 = stack_v[ --stack_ptr ];
-      float val1 = stack_v[ --stack_ptr ];
-      stack_v[ stack_ptr++ ] = (this->*calc_cmds[i].func)( val1, val2 );
+  for( int j = 0; j < MAX_DATA_NUM; j++ ) {
+    long val = 0;
+    for( int i = 0; i < pars_cmds_n[j]; i++ ) {      
+      byte v = get_bits( pars_cmds[j][i].byte_idx, pars_cmds[j][i].bit_idx );
+      if( pars_cmds[j][i].bit_idx > 7 ) val = ( val << 8 ) | v;
+      else val = ( val << 1 ) | v;
     }
+    data[j] = ( float ) val;
+    
+    
+    float stack_v[ MAX_CALC_LENGTH ];
+    int stack_ptr = 0;
+    
+    for( int i = 0; i < calc_cmds_n[j]; i++ ) {  
+      
+      if( calc_cmds[j][i].func == NULL ) {
+        stack_v[ stack_ptr++ ] = *(calc_cmds[j][i].value);
+
+      } else {
+        float val2 = stack_v[ --stack_ptr ];
+        float val1 = stack_v[ --stack_ptr ];
+        stack_v[ stack_ptr++ ] = (this->*calc_cmds[j][i].func)( val1, val2 );
+      }
+    }
+    value[j] = stack_v[0];
   }
-  value = stack_v[0];
   
   
   
@@ -312,45 +319,45 @@ void I2CParser::show_cmds( struct comm *cmd, byte cmd_n ) {
   }
 }
 
-void I2CParser::show_pars() { 
+void I2CParser::show_pars( byte idx ) { 
   
-  for( int i = 0; i < pars_cmds_n; i++ ) {
+  for( int i = 0; i < pars_cmds_n[idx]; i++ ) {
     
-    if( pars_cmds[i].bit_idx == 8 ) {
+    if( pars_cmds[idx][i].bit_idx == 8 ) {
       Serial.print( "B" );
-      Serial.print( pars_cmds[i].byte_idx );
+      Serial.print( pars_cmds[idx][i].byte_idx );
     } else {
       Serial.print( "B" );
-      Serial.print( pars_cmds[i].byte_idx );
+      Serial.print( pars_cmds[idx][i].byte_idx );
       Serial.print( ":" );
-      Serial.print( pars_cmds[i].bit_idx );
+      Serial.print( pars_cmds[idx][i].bit_idx );
     }
     
-    if( i == pars_cmds_n - 1 )Serial.println( "" );
+    if( i == pars_cmds_n[idx] - 1 )Serial.println( "" );
     else Serial.print( " + " );
   };
 }
 
-void I2CParser::show_calc() { 
+void I2CParser::show_calc( byte idx ) { 
   
   
 
-  for( int i = 0; i < calc_cmds_n; i++ ) { 
+  for( int i = 0; i < calc_cmds_n[idx]; i++ ) { 
      
     
-    if( calc_cmds[i].func == NULL ) {
+    if( calc_cmds[idx][i].func == NULL ) {
       
-      if( calc_cmds[i].value == &data ) Serial.print( "$" );
-      else Serial.print( calc_cmds[i].phy_value );
+      if( calc_cmds[idx][i].value == &(data[ idx ]) ) Serial.print( "$" );
+      else Serial.print( calc_cmds[idx][i].phy_value );
 
     } else {
 
-      if( calc_cmds[i].func == &I2CParser::do_add ) Serial.print( "+" );
-      else if( calc_cmds[i].func == &I2CParser::do_sub ) Serial.print( "-" );
-      else if( calc_cmds[i].func == &I2CParser::do_mul ) Serial.print( "*" );
-      else if( calc_cmds[i].func == &I2CParser::do_div ) Serial.print( "/" );
-      else if( calc_cmds[i].func == &I2CParser::do_lsh ) Serial.print( "<<" );
-      else if( calc_cmds[i].func == &I2CParser::do_rsh ) Serial.print( ">>" );
+      if( calc_cmds[idx][i].func == &I2CParser::do_add ) Serial.print( "+" );
+      else if( calc_cmds[idx][i].func == &I2CParser::do_sub ) Serial.print( "-" );
+      else if( calc_cmds[idx][i].func == &I2CParser::do_mul ) Serial.print( "*" );
+      else if( calc_cmds[idx][i].func == &I2CParser::do_div ) Serial.print( "/" );
+      else if( calc_cmds[idx][i].func == &I2CParser::do_lsh ) Serial.print( "<<" );
+      else if( calc_cmds[idx][i].func == &I2CParser::do_rsh ) Serial.print( ">>" );
 
     }
     
